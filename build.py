@@ -38,7 +38,7 @@ def main():
         '--collect-all', 'llvmlite', '--collect-all', 'av', '--collect-all', 'sounddevice',
         '--add-data', 'LICENSE:.', '--add-data', 'THIRD_PARTY.md:.',
         '--hidden-import', 'pynput.keyboard._darwin' if sys.platform == 'darwin' else 'pynput.keyboard._win32',
-        '--osx-bundle-identifier', 'io.soundtrigger.desktop', *signing, 'run.py')
+        '--osx-bundle-identifier', 'io.github.koppacha.howloutbutton', *signing, 'run.py')
     binary = ROOT / 'dist' / (f'{BINARY_NAME}.app/Contents/MacOS/{BINARY_NAME}'
                              if sys.platform == 'darwin' else f'{BINARY_NAME}/{BINARY_NAME}.exe')
     report = ROOT / 'build' / 'bundle-report.json'

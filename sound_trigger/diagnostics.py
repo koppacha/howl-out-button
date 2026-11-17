@@ -44,7 +44,7 @@ def diagnose(report):
             result['keyboard'] = dict(c_variants=3, single_foreground_press=1, event_tap_started=False)
         rate = 24000
         wave = (.1 * np.sin(2 * np.pi * 440 * np.arange(rate) / rate)).astype('float32')
-        with tempfile.TemporaryDirectory(prefix='soundtrigger-check-') as tmp:
+        with tempfile.TemporaryDirectory(prefix='howloutbutton-check-') as tmp:
             os.environ.setdefault('NUMBA_CACHE_DIR', str(Path(tmp) / 'cache'))
             for extension, codec in [('wav', 'pcm_s16le'), ('mp3', 'libmp3lame'), ('m4a', 'aac')]:
                 source = Path(tmp) / f'synthetic.{extension}'
