@@ -1,0 +1,74 @@
+name: Attach release assets
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Test and build run ID
+        required: true
+      tag:
+        description: Existing draft release tag
+        required: true
+        default: v0.2.0
+permissions:
+  actions: read
+  contents: write
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_RUN_ID: ${{ inputs.run_id }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Verify source run and draft target
+        shell: bash
+        run: |
+          gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN_ID" > run.json
+          gh release view "$RELEASE_TAG" --json isDraft,targetCommitish > release.json
+          python - <<'PYCODE'
+          import json
+          run = json.load(open('run.json'))
+          release = json.load(open('release.json'))
+          assert run['conclusion'] == 'success', 'Build run must succeed'
+          assert run['path'] == '.github/workflows/build.yml', 'Unexpected workflow'
+          assert run['head_branch'] == 'main', 'Expected main branch build'
+          assert release['isDraft'], 'Only draft releases can be modified'
+          assert release['targetCommitish'] == run['head_sha'], 'Build and release commits differ'
+          PYCODE
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+          path: artifacts
+      - name: Check reports and attach archives
+        shell: bash
+        run: |
+          python - <<'PYCODE'
+          from pathlib import Path
+          import hashlib
+          import json
+          import shutil
+          import zipfile
+          assets = Path('release-assets')
+          assets.mkdir()
+          sums = []
+          for platform in ('Windows-x64', 'macOS-arm64', 'macOS-x64'):
+              folder = Path('artifacts') / f'Howl-Out-Button-{platform}'
+              reports = list(folder.rglob('bundle-report.json'))
+              assert len(reports) == 1, f'Missing report: {platform}'
+              assert json.loads(reports[0].read_text())['ok'], f'Failed diagnosis: {platform}'
+              name = f'Howl-Out-Button-{platform}.zip'
+              archives = list(folder.rglob(name))
+              assert len(archives) == 1, f'Missing archive: {platform}'
+              with zipfile.ZipFile(archives[0]) as archive:
+                  assert archive.testzip() is None, f'Corrupt archive: {platform}'
+              target = assets / name
+              shutil.copy2(archives[0], target)
+              with target.open('rb') as stream:
+                  digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+              sums.append(f'{digest}  {name}')
+          (assets / 'SHA256SUMS.txt').write_text('\n'.join(sums) + '\n')
+          PYCODE
+          gh release upload "$RELEASE_TAG" release-assets/* --clobber
