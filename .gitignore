@@ -1,0 +1,24 @@
+.venv/
+build/
+dist/
+__pycache__/
+.pytest_cache/
+*.spec
+*.pyc
+.DS_Store
+
+# Local/private material is never published
+AGENTS.md
+.codex/
+.agents/
+logs/
+.env
+.env.*
+settings.json
+audio/
+cache/
+*.db
+*.sqlite*
+docs/RELEASE_REVIEW.md
+docs/VALIDATION.md
+docs/release-checks.json

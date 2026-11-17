@@ -1,0 +1,46 @@
+name: Test and build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    name: ${{ matrix.artifact }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: Windows-x64
+          - os: macos-15
+            artifact: macOS-arm64
+          - os: macos-15-intel
+            artifact: macOS-x64
+    runs-on: ${{ matrix.os }}
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Test, build and diagnose executable
+        run: python build.py
+      - name: Archive macOS application
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent dist/Howl-Out-Button.app dist/Howl-Out-Button-${{ matrix.artifact }}.zip
+      - name: Archive Windows application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path dist/Howl-Out-Button -DestinationPath dist/Howl-Out-Button-${{ matrix.artifact }}.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Howl-Out-Button-${{ matrix.artifact }}
+          if-no-files-found: error
+          path: |
+            dist/*.zip
+            build/bundle-report.json
